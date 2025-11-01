@@ -1,126 +1,264 @@
+# report.py
 import time
 import random
-import json
 import getpass
-import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from config import print_with_timestamp, get_random_user_agent
 
-# List of user agents to choose from randomly
-user_agents = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.5414.119 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
-    "Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 11.6; rv:90.0) Gecko/20100101 Firefox/90.0",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
-    "Mozilla/5.0 (Linux; Android 11; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Mobile Safari/537.36",
-    "Mozilla/5.0 (Linux; U; Android 9; en-us; Redmi Note 7 Build/PKQ1.190616.001) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.5481.77 Mobile Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:100.0) Gecko/20100101 Firefox/100.0",
-    "Opera/9.80 (Windows NT 6.1; WOW64) Presto/2.12.388 Version/12.18",
-    "Mozilla/5.0 (Linux; U; Android 10; en-us; SM-A505F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.5735.134 Mobile Safari/537.36",
-    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0",
-]
-def print_with_timestamp(message):
-    current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{current_time}] - {message}")
-    
-def get_random_user_agent():
-    """
-    Select a random user-agent from the list.
-    """
-    if not user_agents:
-        raise ValueError("User-agent list is empty")
-    return random.choice(user_agents)
+class InstagramReportBot:
+    def __init__(self):
+        self.driver = None
 
-def setup_browser_with_user_agent():
-    """
-    Set up the Selenium WebDriver with specified options including a random user-agent.
-    """
-    options = Options()
-    options.add_argument('--disable-extensions')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument("accept-language=en-US,en;q=0.9")
-    options.add_argument("referer=https://google.com")
-
-    headless_choice = input("Do you want to run the browser? (yes/no): ").strip().lower()
-    if headless_choice in ["no", "n"]:
-        options.add_argument('--headless')
-        options.add_argument('--disable-gpu')
-
-    user_agent = get_random_user_agent()
-    options.add_argument(f'user-agent={user_agent}')
-
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-
-    driver = webdriver.Chrome(options=options, service=Service("/usr/local/bin/chromedriver"))
-
-    # Inject JavaScript to prevent detection of automation
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": """
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            });
+    def setup_browser_with_user_agent(self):
         """
-    })
+        Set up the Selenium WebDriver with specified options including a random user-agent.
+        """
+        options = Options()
+        options.add_argument('--disable-extensions')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument("accept-language=en-US,en;q=0.9")
+        options.add_argument("referer=https://google.com")
 
-    return driver
+        headless_choice = input("Do you want to run the browser in headless mode? (yes/no): ").strip().lower()
+        if headless_choice in ["yes", "y"]:
+            options.add_argument('--headless')
+            options.add_argument('--disable-gpu')
 
-def login_to_instagram():
-    """
-    Log into Instagram using the provided username and password.
-    """
-    username = input("Enter account username: ")
-    password = getpass.getpass("Enter account password: ")
-    driver = setup_browser_with_user_agent()
+        user_agent = get_random_user_agent()
+        options.add_argument(f'user-agent={user_agent}')
 
-    try:
-        driver.get("https://www.instagram.com")
-        while True:
-            try:
-                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "username"))).send_keys(username)
-                driver.find_element(By.NAME, "password").send_keys(password)
-                driver.find_element(By.XPATH, "//button[@type='submit']").click()
-                time.sleep(random.uniform(2, 4))
-            except Exception as e:
-                print_with_timestamp("Username button not found, refreshing the page...")
-                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//button//div[text()='Log in']"))).click()
-                time.sleep(random.uniform(2, 4))  
-                continue 
-            click_not_now(driver)
-            report(driver)
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option('useAutomationExtension', False)
 
-    except Exception as e:
-        print_with_timestamp(f"Failed to log in: {e}")
-        time.sleep(random.uniform(2, 4))
+        self.driver = webdriver.Chrome(options=options, service=Service("/usr/local/bin/chromedriver"))
 
-def click_not_now(driver):
-    """
-    Click the 'Not Now' button if it appears to skip additional notifications.
-    """
-    try:
-        WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//div[contains(text(), 'Not now')]"))
-        ).click()
-        print_with_timestamp("Clicked 'Not Now' successfully.")
-    except Exception as e:
-        print_with_timestamp(f"Failed to click 'Not Now' or incorrect username/password: {e}")
+        # Inject JavaScript to prevent detection of automation
+        self.driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+            "source": """
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+            """
+        })
 
+    def click_not_now(self):
+        """
+        Click the 'Not Now' button if it appears to skip additional notifications.
+        """
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//div[contains(text(), 'Not now')]"))
+            ).click()
+            print_with_timestamp("Clicked 'Not Now' successfully.")
+        except Exception as e:
+            print_with_timestamp(f"No 'Not Now' button found: {e}")
 
-def report(driver):
-    try:
-        target_username = input("Enter the target username: ")
-
-        driver.get(f"https://www.instagram.com/{target_username}/")
-        time.sleep(random.uniform(2, 4))
+    def login_to_instagram(self):
+        """
+        Log into Instagram using the provided username and password.
+        """
+        username = input("Enter account username: ").strip()
+        password = getpass.getpass("Enter account password: ")
         
+        self.setup_browser_with_user_agent()
+
+        try:
+            self.driver.get("https://www.instagram.com")
+            time.sleep(random.uniform(2, 4))
+            
+            # Login process
+            username_field = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.NAME, "username"))
+            )
+            username_field.send_keys(username)
+            
+            password_field = self.driver.find_element(By.NAME, "password")
+            password_field.send_keys(password)
+            
+            login_button = self.driver.find_element(By.XPATH, "//button[@type='submit']")
+            login_button.click()
+            time.sleep(random.uniform(3, 5))
+
+            # Handle popups
+            self.click_not_now()
+            
+            return True
+
+        except Exception as e:
+            print_with_timestamp(f"Failed to log in: {e}")
+            return False
+
+    def report_account(self, target_username, reason="spam"):
+        """
+        Report an Instagram account for specified reason.
+        """
+        try:
+            print_with_timestamp(f"Starting report process for @{target_username}")
+            
+            # Navigate to target profile
+            self.driver.get(f"https://www.instagram.com/{target_username}/")
+            time.sleep(random.uniform(3, 5))
+            
+            # Click on three dots menu
+            try:
+                menu_button = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button//span[contains(@aria-label, 'Options')]"))
+                )
+                menu_button.click()
+                time.sleep(random.uniform(1, 2))
+            except:
+                # Alternative menu selector
+                menu_button = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//svg[@aria-label='Options']"))
+                )
+                menu_button.click()
+                time.sleep(random.uniform(1, 2))
+            
+            # Click report button
+            report_button = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Report')]"))
+            )
+            report_button.click()
+            time.sleep(random.uniform(1, 2))
+            
+            # Report flow - step 1: Select report type
+            try:
+                report_option = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Report')]"))
+                )
+                report_option.click()
+                time.sleep(random.uniform(1, 2))
+            except:
+                print_with_timestamp("Using alternative report flow...")
+            
+            # Step 2: Select reason
+            reasons = {
+                "spam": "It's spam",
+                "scam": "It's a scam",
+                "harassment": "Bullying or harassment",
+                "nudity": "Nudity or sexual activity",
+                "hate": "Hate speech or symbols"
+            }
+            
+            selected_reason = reasons.get(reason, "It's spam")
+            
+            try:
+                reason_button = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, f"//button[contains(text(), '{selected_reason}')]"))
+                )
+                reason_button.click()
+                time.sleep(random.uniform(1, 2))
+            except:
+                # If specific reason not found, click first available reason
+                reason_button = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "(//button[contains(text(), 'It')])[1]"))
+                )
+                reason_button.click()
+                time.sleep(random.uniform(1, 2))
+            
+            # Step 3: Submit report
+            try:
+                submit_button = WebDriverWait(self.driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Submit')]"))
+                )
+                submit_button.click()
+                time.sleep(random.uniform(2, 3))
+                
+                print_with_timestamp(f"✅ Successfully reported @{target_username} for {reason}")
+                return True
+                
+            except:
+                print_with_timestamp(f"⚠️  Report process completed for @{target_username} (may need manual confirmation)")
+                return True
+
+        except Exception as e:
+            print_with_timestamp(f"❌ Failed to report @{target_username}: {e}")
+            return False
+
+    def report_multiple_accounts(self, usernames, reason="spam"):
+        """
+        Report multiple Instagram accounts.
+        """
+        successful_reports = 0
+        
+        for i, username in enumerate(usernames, 1):
+            print_with_timestamp(f"Progress: {i}/{len(usernames)}")
+            
+            if self.report_account(username.strip(), reason):
+                successful_reports += 1
+            
+            # Random delay between reports
+            if i < len(usernames):
+                delay = random.uniform(10, 20)  # Longer delay for reports
+                print_with_timestamp(f"Waiting {delay:.1f} seconds before next report...")
+                time.sleep(delay)
+
+        return successful_reports
+
+    def run(self):
+        """
+        Main execution function for the report bot.
+        """
+        print_with_timestamp("Instagram Account Reporting Tool")
+        print_with_timestamp("=" * 45)
+        print_with_timestamp("⚠️  Use responsibly and only for legitimate reports!")
+        
+        # Login
+        if not self.login_to_instagram():
+            return
+
+        # Get reporting details
+        print_with_timestamp("\nReporting Options:")
+        print_with_timestamp("1. Report single account")
+        print_with_timestamp("2. Report multiple accounts from file")
+        
+        choice = input("Choose option (1 or 2): ").strip()
+        
+        if choice == "1":
+            # Single account report
+            target_username = input("Enter username to report: ").strip()
+            reason = input("Enter reason (spam/scam/harassment/nudity/hate): ").strip().lower() or "spam"
+            
+            self.report_account(target_username, reason)
+            
+        elif choice == "2":
+            # Multiple accounts from file
+            filename = input("Enter filename with usernames (one per line): ").strip()
+            reason = input("Enter reason (spam/scam/harassment/nudity/hate): ").strip().lower() or "spam"
+            
+            try:
+                with open(filename, 'r', encoding='utf-8') as f:
+                    usernames = [line.strip() for line in f if line.strip()]
+                
+                if not usernames:
+                    print_with_timestamp("No usernames found in file.")
+                    return
+                
+                print_with_timestamp(f"Found {len(usernames)} usernames to report.")
+                confirm = input("Proceed with reporting? (yes/no): ").strip().lower()
+                
+                if confirm in ["yes", "y"]:
+                    successful = self.report_multiple_accounts(usernames, reason)
+                    print_with_timestamp(f"✅ Reporting completed! {successful}/{len(usernames)} successful reports.")
+                else:
+                    print_with_timestamp("Reporting cancelled.")
+                    
+            except FileNotFoundError:
+                print_with_timestamp("❌ File not found.")
+            except Exception as e:
+                print_with_timestamp(f"❌ Error reading file: {e}")
+        else:
+            print_with_timestamp("Invalid choice.")
+
+        # Cleanup
+        self.driver.quit()
+
+if __name__ == "__main__":
+    bot = InstagramReportBot()
+    bot.run()
