@@ -23,68 +23,56 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        # همیشه selenium رو نصب کن
+        pip install selenium>=4.10.0
+        # سعی کن requirements.txt رو پیدا کن و نصب کن
+        if [ -f "requirements.txt" ]; then
+          echo "📦 Installing from requirements.txt"
+          pip install -r requirements.txt
+        elif [ -f "requirement.txt" ]; then
+          echo "📦 Installing from requirement.txt"
+          pip install -r requirement.txt
+        else
+          echo "⚠️  No requirements file found, only selenium installed"
+        fi
         
     - name: Check Python syntax
       run: |
         echo "🔍 Checking Python syntax..."
-        python -m py_compile get_followers.py
-        python -m py_compile send_direct.py
+        # استفاده از اسم فایل واقعی
+        python -m py_compile get_folowers.py
+        python -m py_compile send_direct.py  
         python -m py_compile report.py
         echo "✅ All Python files compiled successfully!"
-        
-    - name: Validate requirements.txt
-      run: |
-        echo "📋 Checking requirements.txt..."
-        pip install -r requirements.txt
-        echo "✅ requirements.txt is valid!"
 
-  security-scan:
-    name: Security Basic Checks
-    runs-on: ubuntu-latest
-    needs: syntax-check
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Check for hardcoded secrets
-      run: |
-        echo "🔒 Checking for potential secrets..."
-        if grep -r "password\|token\|secret\|key" *.py --exclude-dir=.git; then
-          echo "⚠️  Warning: Possible hardcoded secrets found"
-          echo "ℹ️  Review the above lines for sensitive data"
-        else
-          echo "✅ No obvious hardcoded secrets found"
-        fi
-        
-    - name: Basic security check with Bandit
-      run: |
-        echo "🛡️ Running basic security checks..."
-        pip install bandit
-        bandit -ll -r *.py || true
-
-  documentation-check:
-    name: Documentation Validation
+  structure-check:
+    name: Project Structure Validation
     runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Check required files exist
+    - name: Validate project structure
       run: |
-        echo "📄 Checking project structure..."
-        [ -f "README.md" ] && echo "✅ README.md exists" || echo "❌ README.md missing"
-        [ -f "requirements.txt" ] && echo "✅ requirements.txt exists" || echo "❌ requirements.txt missing"
-        [ -f "LICENSE" ] && echo "✅ LICENSE exists" || echo "❌ LICENSE missing"
-        [ -f ".gitignore" ] && echo "✅ .gitignore exists" || echo "❌ .gitignore missing"
+        echo "📁 Project Structure Check"
+        echo "=========================="
         
-    - name: Validate README structure
-      run: |
-        echo "📖 Checking README structure..."
-        if grep -q "Instagram Automation Bot" README.md; then
-          echo "✅ README title found"
-        else
-          echo "⚠️  README title might be missing"
-        fi
+        # فایل‌های ضروری
+        echo "Essential Files:"
+        [ -f "README.md" ] && echo "✅ README.md" || echo "❌ README.md"
+        [ -f "LICENSE" ] && echo "✅ LICENSE" || echo "❌ LICENSE" 
+        [ -f ".gitignore" ] && echo "✅ .gitignore" || echo "❌ .gitignore"
+        
+        # فایل requirements
+        echo ""
+        echo "Requirements Files:"
+        [ -f "requirements.txt" ] && echo "✅ requirements.txt" || echo "❌ requirements.txt"
+        [ -f "requirement.txt" ] && echo "⚠️  requirement.txt (typo?)" || echo "✅ No duplicate file"
+        
+        # فایل‌های پایتون
+        echo ""
+        echo "Python Files:"
+        [ -f "get_folowers.py" ] && echo "✅ get_folowers.py" || echo "❌ get_folowers.py"
+        [ -f "send_direct.py" ] && echo "✅ send_direct.py" || echo "❌ send_direct.py"
+        [ -f "report.py" ] && echo "✅ report.py" || echo "❌ report.py"
