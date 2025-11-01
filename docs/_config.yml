@@ -1,0 +1,6 @@
+title: "Instagram Automation Bot"
+description: "A sophisticated Python-based Instagram automation tool for security research"
+theme: jekyll-theme-cayman
+show_downloads: false
+github:
+  is_project_page: false
